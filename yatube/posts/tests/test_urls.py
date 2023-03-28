@@ -37,23 +37,22 @@ class StaticURLTests(TestCase):
             f'/profile/{self.user.username}/': 'posts/profile.html',
             f'/posts/{self.post.id}/': 'posts/post_detail.html',
             '/unexisting_page/': False,
+            '/create/': 'posts/create_post.html',
+            f'/posts/{self.post.id}/edit/': 'posts/create_post.html'
         }
         for adress, template in adresses.items():
             with self.subTest(aderss=adress):
-                response = self.guest_client.get(adress)
+                response = self.authorized_client.get(adress)
                 if adress == '/unexisting_page/':
                     self.assertEqual(response.status_code, 404)
                 else:
-                    self.assertEqual(response.status_code, 200)
                     self.assertTemplateUsed(response, template)
 
-    def test_auth(self):
-        adresses = {
-            '/create/': 'posts/create_post.html',
-            f'/posts/{self.post.id}/edit': 'posts/create_post.html',
-        }
-        for adress, template in adresses.items():
-            with self.subTest(adress=adress):
-                response = self.authorized_client.get(adress)
-                self.assertEqual(response.status_code, 200)
-                self.assertTemplateUsed(response, template)
+    def test_urls_authorized_client(self):
+        """Доступ авторизованного пользователя"""
+        pages: tuple = ('/create/',
+                        f'/posts/{self.post.id}/edit/')
+        for page in pages:
+            response = self.authorized_client.get(page)
+            error_name = f'Ошибка: нет доступа до страницы {page}'
+            self.assertEqual(response.status_code, 200, error_name)

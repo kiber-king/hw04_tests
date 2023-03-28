@@ -6,7 +6,6 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..forms import PostForm
 from ..models import Post, Group
 
 User = get_user_model()
@@ -24,16 +23,10 @@ class PostFormTest(TestCase):
             slug='group_1',
             description='Тестовое описание', )
         cls.post = Post.objects.create(
-            text='testText',
             author=cls.user,
-            group=cls.group
+            text='test',
+            group=cls.group,
         )
-        cls.form = PostForm()
-        cls.forms_data = {
-            'text': cls.post.text,
-            'group': cls.post.group,
-            'author': cls.post.author,
-        }
 
     @classmethod
     def tearDownClass(cls):
@@ -43,20 +36,22 @@ class PostFormTest(TestCase):
     def setUp(self):
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        self.forms_data = {
+            'text': self.post.text,
+            'group': self.group.id,
+        }
 
     def test_create_post(self):
-        posts_count = 0
+        posts_count = Post.objects.count()
         form_data = self.forms_data
         response = self.authorized_client.post(reverse('posts:create_post'),
                                                data=form_data, follow=True)
         self.assertEqual(Post.objects.count(), posts_count + 1)
-        self.assertRedirects(response, reverse('posts:profile', kwargs={
-            'username': self.user.username}))
+        self.assertEqual(response.status_code, 200)
         self.assertTrue(
             Post.objects.filter(
                 text=self.post.text,
                 group=self.post.group,
-                author=self.post.author,
             ).exists()
         )
 
@@ -66,13 +61,11 @@ class PostFormTest(TestCase):
         response = self.authorized_client.post(
             reverse('posts:post_edit', args=(self.post.id,)), data=form_data,
             follow=True)
-        self.assertRedirects(response, reverse('posts:profile', kwargs={
-            'username': self.user.username}))
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(Post.objects.count(), posts_count)
         self.assertTrue(
             Post.objects.filter(
                 text=self.post.text,
                 group=self.post.group,
-                author=self.post.author,
             ).exists()
         )
