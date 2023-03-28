@@ -54,10 +54,12 @@ class ViewsTests(TestCase):
                     kwargs={'username': 'auth'}): 'posts/profile.html',
             reverse('posts:post_detail',
                     kwargs={
-                        'post_id': f'{self.post.id}'}): 'posts/post_detail.html',
+                        'post_id': f'{self.post.id}'}):
+                'posts/post_detail.html',
             reverse('posts:post_edit',
                     kwargs={
-                        'post_id': f'{self.post.id}'}): 'posts/create_post.html',
+                        'post_id': f'{self.post.id}'}):
+                'posts/create_post.html',
             reverse('posts:create_post'): 'posts/create_post.html',
 
         }
@@ -120,8 +122,10 @@ class ViewsTests(TestCase):
 
     def test_after_creation(self):
         reverses = [reverse('posts:index'), reverse('posts:group_list',
-                                                    kwargs={'slug':
-                                                                self.group.slug}),
+                                                    kwargs={
+                                                        'slug':
+                                                            self.group.slug
+                                                    }),
                     reverse('posts:profile',
                             kwargs={'username': self.post.author})]
         for reverse_name in reverses:
