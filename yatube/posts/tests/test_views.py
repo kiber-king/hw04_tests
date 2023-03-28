@@ -47,11 +47,14 @@ class ViewsTests(TestCase):
 
     def test_namespace(self):
         templates = {
-            reverse('posts:index'): 'posts/index.html',
+            reverse('posts:index'):
+                'posts/index.html',
             reverse('posts:group_list',
-                    kwargs={'slug': 'group_1'}): 'posts/group_list.html',
+                    kwargs={'slug': 'group_1'}):
+                'posts/group_list.html',
             reverse('posts:profile',
-                    kwargs={'username': 'auth'}): 'posts/profile.html',
+                    kwargs={'username': 'auth'}):
+                'posts/profile.html',
             reverse('posts:post_detail',
                     kwargs={
                         'post_id': f'{self.post.id}'}):
