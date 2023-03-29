@@ -53,4 +53,3 @@ class StaticURLTests(TestCase):
                     else:
                         self.assertEqual(response.status_code, HTTPStatus.OK)
                         self.assertTemplateUsed(response, template)
-
