@@ -1,7 +1,8 @@
-from django.contrib.auth import get_user_model
+from http import HTTPStatus
+
 from django.test import Client, TestCase
 
-from ..models import Post, Group
+from ..models import Post, Group, get_user_model
 
 User = get_user_model()
 
@@ -20,18 +21,15 @@ class StaticURLTests(TestCase):
             author=cls.user,
             text='test',
         )
+        cls
 
     def setUp(self):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
-    def test_homepage(self):
-        response = self.guest_client.get('/')
-        self.assertEqual(response.status_code, 200)
-
-    def test_all_temp(self):
-        adresses = {
+    def test_all_temp_guest_client(self):
+        addresses = {
             '/': 'posts/index.html',
             f'/group/{self.group.slug}/': 'posts/group_list.html',
             f'/profile/{self.user.username}/': 'posts/profile.html',
@@ -40,19 +38,19 @@ class StaticURLTests(TestCase):
             '/create/': 'posts/create_post.html',
             f'/posts/{self.post.id}/edit/': 'posts/create_post.html'
         }
-        for adress, template in adresses.items():
-            with self.subTest(aderss=adress):
-                response = self.authorized_client.get(adress)
-                if adress == '/unexisting_page/':
-                    self.assertEqual(response.status_code, 404)
-                else:
+        for address, template in addresses.items():
+            with self.subTest(adderss=address):
+                if address == '/create/' or (
+                        address == f'/posts/{self.post.id}/edit/'):
+                    response = self.authorized_client.get(address)
                     self.assertTemplateUsed(response, template)
+                    self.assertEqual(response.status_code, HTTPStatus.OK)
+                else:
+                    response = self.guest_client.get(address)
+                    if address == '/unexisting_page/':
+                        self.assertEqual(response.status_code,
+                                         HTTPStatus.NOT_FOUND)
+                    else:
+                        self.assertEqual(response.status_code, HTTPStatus.OK)
+                        self.assertTemplateUsed(response, template)
 
-    def test_urls_authorized_client(self):
-        """Доступ авторизованного пользователя"""
-        pages: tuple = ('/create/',
-                        f'/posts/{self.post.id}/edit/')
-        for page in pages:
-            response = self.authorized_client.get(page)
-            error_name = f'Ошибка: нет доступа до страницы {page}'
-            self.assertEqual(response.status_code, 200, error_name)
