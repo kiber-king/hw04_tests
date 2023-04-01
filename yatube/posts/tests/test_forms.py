@@ -1,15 +1,11 @@
-import shutil
-import tempfile
 from http import HTTPStatus
 
-from django.conf import settings
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from ..models import Post, Group, get_user_model
 
 User = get_user_model()
-TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
 class PostFormTest(TestCase):
@@ -27,11 +23,11 @@ class PostFormTest(TestCase):
             description='Новое тестовое описание группы 2'
         )
         cls.CREATE_POST = reverse('posts:create_post')
-
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        cls.post = Post.objects.create(
+            text='Old text',
+            author=cls.user,
+            group=cls.group_1
+        )
 
     def setUp(self):
         self.authorized_client = Client()
@@ -46,21 +42,17 @@ class PostFormTest(TestCase):
         response = self.authorized_client.post(self.CREATE_POST,
                                                data=form_data, follow=True)
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertTrue(
-            Post.objects.filter(
-                text='Текст нового поста',
-                group=self.group_1.id,
-                author=self.user,
-            ).exists()
-        )
+        post = Post.objects.latest('id')
+        form_to_post = {
+            form_data['text']: post.text,
+            form_data['group']: post.group.id
+        }
+        for form_value, post_value in form_to_post.items():
+            with self.subTest(form_value=form_value):
+                self.assertEqual(form_value, post_value)
         self.assertEqual(Post.objects.count(), posts_count + 1)
 
     def test_edit_post(self):
-        self.post = Post.objects.create(
-            text='Old text',
-            author=self.user,
-            group=self.group_1
-        )
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Новый текст старого поста',
@@ -71,9 +63,11 @@ class PostFormTest(TestCase):
             follow=True)
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(Post.objects.count(), posts_count)
-        self.assertTrue(
-            Post.objects.filter(
-                text='Новый текст старого поста',
-                group=self.group_2.id
-            ).exists()
-        )
+        post = Post.objects.latest('id')
+        form_to_post = {
+            form_data['text']: post.text,
+            form_data['group']: post.group.id
+        }
+        for form_value, post_value in form_to_post.items():
+            with self.subTest(form_value=form_value):
+                self.assertEqual(form_value, post_value)

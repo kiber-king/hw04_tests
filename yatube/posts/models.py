@@ -21,6 +21,11 @@ class Post(models.Model):
                               blank=True,
                               null=True,
                               on_delete=models.SET_NULL)
+    image = models.ImageField(
+        'Картинка',
+        upload_to='posts/',
+        blank=True
+    )
 
     class Meta:
         ordering = ['-pub_date']

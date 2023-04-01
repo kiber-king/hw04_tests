@@ -29,27 +29,23 @@ class StaticURLTests(TestCase):
         self.authorized_client.force_login(self.user)
 
     def test_all_temp_guest_client(self):
-        addresses = {
-            '/': 'posts/index.html',
-            f'/group/{self.group.slug}/': 'posts/group_list.html',
-            f'/profile/{self.user.username}/': 'posts/profile.html',
-            f'/posts/{self.post.id}/': 'posts/post_detail.html',
-            '/unexisting_page/': False,
-            '/create/': 'posts/create_post.html',
-            f'/posts/{self.post.id}/edit/': 'posts/create_post.html'
-        }
-        for address, template in addresses.items():
-            with self.subTest(adderss=address):
-                if address == '/create/' or (
-                        address == f'/posts/{self.post.id}/edit/'):
-                    response = self.authorized_client.get(address)
-                    self.assertTemplateUsed(response, template)
-                    self.assertEqual(response.status_code, HTTPStatus.OK)
-                else:
-                    response = self.guest_client.get(address)
-                    if address == '/unexisting_page/':
-                        self.assertEqual(response.status_code,
-                                         HTTPStatus.NOT_FOUND)
-                    else:
-                        self.assertEqual(response.status_code, HTTPStatus.OK)
-                        self.assertTemplateUsed(response, template)
+        addresses = [
+            ['/', 'posts/index.html', self.guest_client, HTTPStatus.OK],
+            [f'/group/{self.group.slug}/', 'posts/group_list.html',
+             self.guest_client, HTTPStatus.OK],
+            [f'/profile/{self.user.username}/', 'posts/profile.html',
+             self.guest_client,
+             HTTPStatus.OK],
+            [f'/posts/{self.post.id}/', 'posts/post_detail.html',
+             self.guest_client, HTTPStatus.OK],
+            ['/unexisting_page/', 'core/404.html', self.guest_client,
+             HTTPStatus.NOT_FOUND],
+            ['/create/', 'posts/create_post.html', self.authorized_client,
+             HTTPStatus.OK],
+            [f'/posts/{self.post.id}/edit/', 'posts/create_post.html',
+             self.authorized_client, HTTPStatus.OK]]
+        for address, template, client, status_code in addresses:
+            with self.subTest(address=address, client=client):
+                response = client.get(address)
+                self.assertEqual(response.status_code, status_code)
+                self.assertTemplateUsed(response, template)

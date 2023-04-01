@@ -1,5 +1,8 @@
+import tempfile
+
 from django import forms
-from django.test import Client, TestCase
+from django.conf import settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from ..models import Post, Group, get_user_model
@@ -7,8 +10,10 @@ from ..utils import LATEST_POSTS_COUNT
 
 User = get_user_model()
 COUNT_POSTS = 13
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class ViewsTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -29,6 +34,18 @@ class ViewsTests(TestCase):
             text='test',
             group=cls.group,
         )
+        cls.INDEX = reverse('posts:index')
+        cls.GROUP_LIST = reverse('posts:group_list',
+                                 kwargs={'slug': 'group_1'})
+        cls.PROFILE = reverse('posts:profile',
+                              kwargs={'username': 'auth'})
+        cls.POST_DETAIL = reverse('posts:post_detail',
+                                  kwargs={
+                                      'post_id': f'{cls.post.id}'})
+        cls.POST_EDIT = reverse('posts:post_edit',
+                                kwargs={
+                                    'post_id': f'{cls.post.id}'})
+        cls.POST_CREATE = reverse('posts:create_post')
 
     def setUp(self):
         self.authorized_client = Client()
@@ -40,23 +57,17 @@ class ViewsTests(TestCase):
 
     def test_namespace(self):
         templates = {
-            reverse('posts:index'):
+            self.INDEX:
                 'posts/index.html',
-            reverse('posts:group_list',
-                    kwargs={'slug': 'group_1'}):
+            self.GROUP_LIST:
                 'posts/group_list.html',
-            reverse('posts:profile',
-                    kwargs={'username': 'auth'}):
+            self.PROFILE:
                 'posts/profile.html',
-            reverse('posts:post_detail',
-                    kwargs={
-                        'post_id': f'{self.post.id}'}):
+            self.POST_DETAIL:
                 'posts/post_detail.html',
-            reverse('posts:post_edit',
-                    kwargs={
-                        'post_id': f'{self.post.id}'}):
+            self.POST_EDIT:
                 'posts/create_post.html',
-            reverse('posts:create_post'): 'posts/create_post.html',
+            self.POST_CREATE: 'posts/create_post.html',
 
         }
         for namespace, template in templates.items():
@@ -65,10 +76,10 @@ class ViewsTests(TestCase):
                 self.assertTemplateUsed(response, template)
 
     def check_context_without_form(self):
-        pages = [reverse('posts:index'),
-                 reverse('posts:group_list', args=(self.group.slug,)),
-                 reverse('posts:profile', args=(self.user.username,)),
-                 reverse('posts:post_detail', args=(self.post.id,))]
+        pages = [self.INDEX,
+                 self.GROUP_LIST,
+                 self.PROFILE,
+                 self.POST_DETAIL]
         for page in pages:
             with self.subTest(page=page):
                 response = self.authorized_client.get(page)
@@ -90,8 +101,8 @@ class ViewsTests(TestCase):
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField
         }
-        pages = [reverse('posts:create_post'),
-                 reverse('posts:post_edit', args=(self.post.id,))]
+        pages = [self.POST_CREATE,
+                 self.POST_EDIT]
         for page in pages:
             response = self.authorized_client.get(page)
             if page == pages[1]:
@@ -103,13 +114,8 @@ class ViewsTests(TestCase):
                     self.assertIsInstance(form_field, expected)
 
     def test_added_correctly(self):
-        reverses = [reverse('posts:index'), reverse('posts:group_list',
-                                                    kwargs={
-                                                        'slug':
-                                                            self.group.slug
-                                                    }),
-                    reverse('posts:profile',
-                            kwargs={'username': self.post.author})]
+        reverses = [self.INDEX, self.GROUP_LIST,
+                    self.PROFILE]
         for reverse_name in reverses:
             with self.subTest(reverse_name=reverse_name):
                 response = self.authorized_client.get(reverse_name)
@@ -135,18 +141,17 @@ class PaginatorView(TestCase):
         )
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user)
-        for i in range(COUNT_POSTS):
-            cls.touple_of_posts.append(Post(
-                text=f'Test post number {i}',
-                group=cls.group,
-                author=cls.user
-            ))
-        Post.objects.bulk_create(cls.touple_of_posts)
+        posts = [Post(text=f'Test post {i}', group=cls.group, author=cls.user)
+                 for i in range(COUNT_POSTS)]
+        Post.objects.bulk_create(posts)
+        cls.INDEX = reverse('posts:index')
+        cls.GROUP_LIST = reverse('posts:group_list', args=(cls.group.slug,))
+        cls.PROFILE = reverse('posts:profile', args=(cls.user.username,))
 
     def count_of_pages(self):
-        pages = [reverse('posts:index'),
-                 reverse('posts:group_list', args=(self.group.slug,)),
-                 reverse('posts:profile', args=(self.user.username,))]
+        pages = [self.INDEX,
+                 self.GROUP_LIST,
+                 self.PROFILE]
         for page in pages:
             response = self.authorized_client.get(page)
             self.assertEqual(len(response.conext['page_obj']),
